@@ -17,21 +17,22 @@
 class Block;
 using namespace std;
 using namespace miffy;
+const int ULONGLONGSIZE=10;///< 優先度スコアを拡張する数だと思う
 /// メインブロックリクエストキュー管理構造体
 typedef struct _RequestQueue{
-  ULONGLONG needflag;           /// そのブロックが必要か否か　優先度スコア
+	ULONGLONG needflag[ULONGLONGSIZE]; /// そのブロックが必要か否か　優先度スコア
 	Block* block;
 }RequestQueue;
-
+static const ULONGLONG LASTFIVEBITS=32;
 /// メインブロック管理構造体　ブロックの数だけ作る
 typedef struct _MainMemManage{
-	ULONGLONG needflag;/// 優先度スコア
+	ULONGLONG needflag[ULONGLONGSIZE];/// 優先度スコア
 	Block* block;
 	int FromLoadTime;
 	float* data;                     //texSubImage3Dに渡す、GPUに渡すデータのポインタ。実際の場所を指すアドレス
-	bool rockflag;                   //上書きを禁止するかフラグ
-	bool loadstartflag;       //そのブロックをロードしはじめたか否か
-	LPOVERLAPPED ol;//winAPI
+	bool replaceable;                   //上書きを禁止するかフラグ
+	bool loadStartFlag;       //そのブロックをロードしはじめたか否か
+	LPOVERLAPPED ol;//winAPI 
 	HANDLE Fl;
 }MainMemManage;
 
@@ -42,44 +43,54 @@ typedef struct _bstruct{
 	RequestQueue*  queIndex;
 }bstruct;
 
-//// テクスチャブロック管理用構造体*/
+//// テクスチャブロック管理用構造体
 typedef struct _TexMemManage{
-    ULONGLONG needflag;           //そのブロックが必要か否か
+    ULONGLONG needflag[ULONGLONGSIZE];           //そのブロックが必要か否か
 	GLuint* texdata;                     //実際の場所を指すアドレス
 	Block* block;
+	bool loadStartFlag;///< 私が加えた。blockRockを使う代わりにこれにしたんだっけかな。
 }TexMemManage;
 
-/*全テクスチャブロック管理用構造体*/
+/// 全テクスチャブロック管理用構造体
 typedef struct _btexstruct{
-	//テクスチャメモリ上のどこに存在するかのアドレス
-	TexMemManage* texdataIndex;
+	TexMemManage* texdataIndex;/// テクスチャメモリ上のどこに存在するかのアドレス
 }btexstruct;
 
 class File 
 {
 
 private:
+	/*! @name プロファイリング用の変数*/
+	//@{
+	int HDblockLoadCount[NUMLEVEL][32][32][16];///< HDからメインメモリへロードされたブロックを数える
+	//int texmemlog[g_MaxTexNum];
+	int *mainmemlog;
+	//@}
 	/*visible index(全階層分持つ)*/
    unsigned int* indexblock[NUMLEVEL];
    unsigned int* texCompressInfo[NUMLEVEL-1];
    string m_Path;//多解像度ボリュームデータの保存してあるディレクトリ
    string m_DataName;//ボリュームデータセットの名前
    /*メインメモリ制御用*/
-	bstruct**** bs;//MainMemManageなどを入れておく4次元配列                   
+	bstruct**** mainMemMap;///< MainMemManageなどを入れておく4次元配列   私はblockRockをやめてこれをつかってる。なんでだっけ？                
 	MainMemManage*  memblock;
 	float*    datapool;
 	//リクエストキュー
 	RequestQueue* reqque;
 
 	/*テクスチャメモリ制御用*/
-	btexstruct**** bstex;
+	btexstruct**** texMemMap;
 	TexMemManage* texblock;
 	GLuint*    texName;
 
 	float loadTime;
 	float texLoadTime;
 	bool  texLoadflag;
-
+	/*! @name 私が加えたかもしんない謎の変数*/
+	//@{
+	bool texmemfullflag;
+	bool mainmemfullflag;
+	//@}
 	/*ハードディスク読込み時間測定用*/
 	LARGE_INTEGER* mTimeStart;
 	LARGE_INTEGER* mTimeEnd;
@@ -99,14 +110,14 @@ public:
 	~File();
 	void Init(string path,string dataname);
 	void deleteMemory(btexstruct* bstex);
-	void deleteMemory(bstruct* bs);
+	void deleteMemory(bstruct* _mainMemMap);
 	LARGE_INTEGER getLaddress(long long address);
-	void loadFile(string file,float* data,int header,int fx, int fy, int fz,MainMemManage* mmm);
+	void loadFile(string _file,int _header,int _size,MainMemManage* _mmm);
 	void loadIndexFile(string file,unsigned int* data,int header,int fx, int fy, int fz);
 	GLuint* getTexaddress(int index);
 	
-	void loadHDToMain(void);
-	void loadMainToTex(Block bl,Cg* Cg,CGparameter decal);
+	bool loadHDToMain(int mostWantedIndex);
+	void loadMainToTex(Block bl,Cg* Cg,CGparameter decal,ULONGLONG _reqvalue);///< 私は最後の引数を加えた
 	void setTexBlock(Cg* Cg,CGparameter decal,Block block);
 
 	void countMainLRU(void);
@@ -121,10 +132,40 @@ public:
 	int getTexCompressInfo(Block bl);
 	bool texBlockExist(Block bl);
 	Block texLowBlockExist(Block bl);
-		
+	/*! @name 私が加えたかもしんない謎の関数*/
+	//@{
+	int getTexLoadCompressInfo(Block testBlock);
+	void updateNeedScoreInMain(double* modelmatrix,double* projmatrix,Block bl,frustum<float> fr,frustum<float>::FrustumName fname);
+	
+	void initTexLoad(int _level);///< 部分的詳細度制御かもしんない
+	void initMainLoad(int _level);///< 部分的詳細度制御かもしんない
+	//void initMainLoad();
+	//void initTexLoad();
+	void getMainNeedFlagChar(int _i,int _j);
+	void outPutfile();
+	int getMinIndexInTex(ULONGLONG *reqquevalue);
+	int getMinIndexInMain(ULONGLONG *reqquevalue);
+	int getMinIndexInReq();
+	int returnHDInfo(Block bl);
+	void printBits(ULONGLONG _value[ULONGLONGSIZE]){
+		for(int i=ULONGLONGSIZE-1;i>=0;i--){
+			char c[64];
+			sprintf(c,"%016I64x",_value[i]);//16進数で表示したいとき	
+			//	sprintf(c,"%I64u",_value);//10進数で表示したいとき
+			printf("%s,",c);
+		}
+		printf("\n");
+	}
+	int min_yoko_find(ULONGLONG miffy[ULONGLONGSIZE]){
+		for(int i=ULONGLONGSIZE-1;i>=0;i--){
+			if(miffy[i]!=0) return i;
+		}
+		return -1;
+	}
+	//@}
 	GLuint getTexName(int i);
-	void RockBlock(Block bl);
-	void UnRockBlock(Block bl);
+	void blockProhibitReplaceInMain(Block bl);
+	void blockPermitReplaceInMain(Block bl);
 	/*引数blがまだreqqueに入れられてないなら空いてる場所orreqqueが満杯なら優先度の一番低いところに入れる。blがもうreqque、またはメインメモリに転送済みにあるなら優先度を更新する*/
 	void mainBlockRequest(double* modelmatrix,double* projmatrix,Block bl,frustum<float> _frustum,frustum<float>::FrustumName fname);
 	void texBlockRequest(double* modelmatrix,double* projmatrix,Block bl,frustum<float> _frustum,frustum<float>::FrustumName fname);
@@ -135,20 +176,16 @@ public:
 	float getTexLoadTime();
 	bool  getTexLoadflag();
 
-
-	void CheckLoadComplete();
-	void CheckLoadComplete(int i);
-
 	float getMainLoadTime();
 	
 	void countThreadTime();/*ハードディスク読込み時間測定用*/
 	float getThreadTime();
 	double getMainToTexTime();
 	void deleteMemory();
-	int returnMainMemInfo(int _i);
-	void initTexLoad();
+	
 	int returnTexMemInfo(int _i);
-	void initMainLoad();
+	int returnMainMemInfo(int _i);
+	
 };
 
 
