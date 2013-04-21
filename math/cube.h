@@ -1,10 +1,10 @@
 #pragma once
-#ifndef MIFFYCUBE
-#define MIFFYCUBE
+#ifndef MIFFY_CUBE
+#define MIFFY_CUBE
 #include "vec3.h"
 #include "matrix.h"
 namespace miffy{
-  static	const int edgeList[8][12] = {
+	static	const int edgeList[8][12] = {
 		{ 0,1,5,6,   4,8,11,9,  3,7,2,10 }, // v0 is front
 		{ 0,4,3,11,  1,2,6,7,   5,9,8,10 }, // v1 is front
 		{ 1,5,0,8,   2,3,7,4,   6,10,9,11}, // v2 is front
@@ -91,7 +91,7 @@ namespace miffy{
 			vec4<T> clip_pos;//クリップ座標での位置
 			vec2<T> normalized_device_pos;
 			//キューブの中で投影された中でも一番右上と左下を求めて最大の大きさを知る
-			vec2<double> minPixel(DBL_MAX,DBL_MAX),maxPixel(-DBL_MAX,-DBL_MAX);
+			vec2<T> minPixel(DBL_MAX,DBL_MAX),maxPixel(-DBL_MAX,-DBL_MAX);
 			for(int i = 0;i  < 8;i++)//
 			{
 				local_pos.set(corner[i]);
