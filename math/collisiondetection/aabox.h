@@ -7,11 +7,16 @@ namespace miffy{
 template <typename T>
 class aabox{
 public:
-  vec3<T> corner;
+	vec3<T> corner;
 	float x,y,z;
-	aabox(const vec3<T>& _corner,T _x,T _y,T _z){
+	aabox(const vec3<T>& _corner,T _sizex,T _sizey,T _sizez){
 		setBox(_corner,_x,_y,_z);
 	}
+#ifdef MIFFY_CUBE
+	aabox(const cube<T>& _cube){
+		corner=_cube.corner[0];
+	}
+#endif
 	void setBox(const vec3<T>& _corner,  T _x, T _y, T _z) {
 		corner=_corner;//cornerにcornerをコピーする。
 		if (_x < (T)0.0) {
@@ -31,7 +36,7 @@ public:
 		z = _z;
 	}
 	//箱が視錐台の中に入ってるかどうか判定するときに使う
-	vec3<T> getVertexN(vec3<T> &normal) {//Negative
+	vec3<T> getVertexN(const vec3<T> &normal) const{//Negative
 
 		vec3<T> res = corner;
 
@@ -47,7 +52,7 @@ public:
 		return(res);
 	}
 	//箱が視錐台の中に入ってるかどうか判定するときに使う
-	vec3<T>  getVertexP(vec3<T>  &_normal) {//Positive
+	vec3<T>  getVertexP(const vec3<T>  &_normal)const {//Positive
 
 		vec3<T> res = corner;
 
