@@ -1,13 +1,9 @@
-#include <GL/glew.h>
 #include "Block.h"
-#include <math.h>
-#include <miffy/math/colorpalette.h>
-
-
+#include <miffy/math/cube.h>
 #define min(a,b)            (((a) < (b)) ? (a) : (b))
 
 
-float Block::brX = 0;
+float Block::brX = 0;//いつも1ぽいわ
 float Block::brY = 0;
 float Block::brZ = 0;
 float Block::iniX = 0;
@@ -29,7 +25,7 @@ Block::Block(int x,int y,int z,short int level,int bnumx,int bnumy,int bnumz) :
 x(x),y(y),z(z),level(level),bnumx(bnumx),bnumy(bnumy),bnumz(bnumz)
 {//x,y,zはブロックのインデックス bnumは各辺のブロックの数。
 
-//  setBlock(x,y,z,level,bnumx,bnumy,bnumz);
+//	setBlock(x,y,z,level,bnumx,bnumy,bnumz);
 }
 
 
@@ -106,9 +102,9 @@ void Block::renderSubblock(unsigned int** rblock,Block bl,float alpha)//サブ�
 				glBegin(GL_LINE_LOOP);//ブロックの線を描画してるところ。         
 				for (int b = 0; b < NoFV; b++)
 				{//printf("[%.1f][%.1f][%.1f]\n",x,y,z);//x,y,zは0.5,0.25,-0.75など色々変わる。
-					float dx = x + 2.0f*vertices[3*faces[4*a+b]+0]*brX*iniX/bl.bnumx;//bl.bnumは、１辺あたりのブロックの個数（int）
-					float dy = y + 2.0f*vertices[3*faces[4*a+b]+1]*brY*iniY/bl.bnumy;
-					float dz = z + 2.0f*vertices[3*faces[4*a+b]+2]*brZ*iniZ/bl.bnumz;
+					float dx = x + 2.0f*CUBE_VERTICES[3*faces[4*a+b]+0]*brX*iniX/bl.bnumx;//bl.bnumは、１辺あたりのブロックの個数（int）
+					float dy = y + 2.0f*CUBE_VERTICES[3*faces[4*a+b]+1]*brY*iniY/bl.bnumy;
+					float dz = z + 2.0f*CUBE_VERTICES[3*faces[4*a+b]+2]*brZ*iniZ/bl.bnumz;
 					glVertex3f(dx,dy,dz); //br?もini?もずっと１
 					//printf("[%.3f][%.3f][%.3f]\n",dx,dy,dz);
 				}
@@ -129,7 +125,9 @@ void Block::renderSubblock(unsigned int** rblock,Block bl,float alpha)//サブ�
 		}
 	}//if block not exist or not
 }
-
+/*!
+@brief dst=matrix*org
+*/
 void Block::mMtx(double matrix[], float org[], float dst[]) {
 	float tmp[4];
 	tmp[0] = org[0]; tmp[1] = org[1]; tmp[2] = org[2]; tmp[3] = org[3];
@@ -162,9 +160,9 @@ float Block::calcDistanceFromcamera(double* modelmatrix){
 	float farblockz;
 	for(int i = 0;i  < 8;i++)
 	{//convert tex coord to world coord
-		float x = (2.0f*this->x-this->bnumx)*Block::brX*Block::iniX/this->bnumx + 2.0f*vertices[3*i + 0]*Block::brX*Block::iniX/this->bnumx;
-		float y = (2.0f*this->y-this->bnumy)*Block::brY*Block::iniY/this->bnumy + 2.0f*vertices[3*i + 1]*Block::brY*Block::iniY/this->bnumy;
-		float z = (2.0f*this->z-this->bnumz)*Block::brZ*Block::iniZ/this->bnumz + 2.0f*vertices[3*i + 2]*Block::brZ*Block::iniZ/this->bnumz;
+		float x = (2.0f*this->x-this->bnumx)*Block::brX*Block::iniX/this->bnumx + 2.0f*CUBE_VERTICES[3*i + 0]*Block::brX*Block::iniX/this->bnumx;
+		float y = (2.0f*this->y-this->bnumy)*Block::brY*Block::iniY/this->bnumy + 2.0f*CUBE_VERTICES[3*i + 1]*Block::brY*Block::iniY/this->bnumy;
+		float z = (2.0f*this->z-this->bnumz)*Block::brZ*Block::iniZ/this->bnumz + 2.0f*CUBE_VERTICES[3*i + 2]*Block::brZ*Block::iniZ/this->bnumz;
 
 		blockAPosition[0] = x;
 		blockAPosition[1] = y;
@@ -191,111 +189,94 @@ float Block::calcDistanceFromcamera(double* modelmatrix){
 	return maxfarblockz;
 }
 //スクリーンの解像度を考慮した探索判定法　論文p27
-bool  Block::resoChange(double* modelmatrix,double* projmatrix,int winwidth,int winheight){
+bool  Block::resoChange(const mat4<double>& _modelmatrix,const mat4<double>& _projmatrix,const vec2<int>& _winsize,int _levelLimit){
 
-	bool checkflag = true;
-/*１ブロックの８つの頂点の中で視点から最も遠いブロックの頂点を求める*/
-	float blockAPosition[4];//far blockpositionの位置になる
-	float blockPosition[4];//far blockpositionの位置にモデルビューマトリックスをかけたもの
-	float farblock[4];
+	
+	/*１ブロックの８つの頂点の中で視点から最も遠いブロックの頂点を求める*/
+	vec4<double> local_block_pos;//far blockpositionの位置になる
+	vec4<double> view_block_pos;//視点が原点な座標系
+	vec4<double> farblock;
 	int  farId;
-	float maxfarblockz = -100.0f;
-	float farblockz;
+	double maxfarblockz = -DBL_MAX;
+	double farblockz;
 	for(int i = 0;i  < 8;i++)
 	{//convert tex coord to world coord
-		float x = (2.0f*this->x-this->bnumx)*Block::brX*Block::iniX/this->bnumx + 2.0f*vertices[3*i + 0]*Block::brX*Block::iniX/this->bnumx;
-		float y = (2.0f*this->y-this->bnumy)*Block::brY*Block::iniY/this->bnumy + 2.0f*vertices[3*i + 1]*Block::brY*Block::iniY/this->bnumy;
-		float z = (2.0f*this->z-this->bnumz)*Block::brZ*Block::iniZ/this->bnumz + 2.0f*vertices[3*i + 2]*Block::brZ*Block::iniZ/this->bnumz;
+		local_block_pos.x = (2.0f*this->x-bnumx)/bnumx + 2.0f*CUBE_VERTICES[3*i + 0]/bnumx;
+		local_block_pos.y = (2.0f*this->y-bnumy)/bnumy + 2.0f*CUBE_VERTICES[3*i + 1]/bnumy;
+		local_block_pos.z  = (2.0f*this->z-bnumz)/bnumz + 2.0f*CUBE_VERTICES[3*i + 2]/bnumz;
 
-		blockAPosition[0] = x;
-		blockAPosition[1] = y;
-		blockAPosition[2] = z;
-		blockAPosition[3] = 1.0;
+		local_block_pos.w = 1.0;
+		view_block_pos=_modelmatrix*local_block_pos;
+		//カメラ位置を原点とした座標になるはず
+		farblockz=view_block_pos.length();//視点から最も遠いブロックの距離。
 
-		mMtx(modelmatrix, blockAPosition, blockPosition);
-//カメラ位置を原点とした座標になるはず
-	
-		farblockz = sqrt(blockPosition[0]*blockPosition[0]+blockPosition[1]*blockPosition[1]+blockPosition[2]*blockPosition[2]);//視点から最も遠いブロックの距離。
-
-		
-//１ブロックの８つの頂点の中で視点から最も遠いブロックの頂点を求める
+		//１ブロックの８つの頂点の中で視点から最も遠いブロックの頂点を求める
+		//なぜ１番遠いのを探すのか？１番遠いのが一番小さく映るからだ。
 		if(farblockz > maxfarblockz)
 		{
 			maxfarblockz = farblockz;
-
-			memcpy(farblock,blockAPosition,sizeof(float)*4);//blockAPositionの先頭からsizeof(float)*4個分farblockへコピーする。
-
+			memcpy(&farblock.x,&local_block_pos.x,sizeof(vec4<double>));//blockAPositionの先頭からsizeof(float)*4個分farblockへコピーする。
 			farId = i;//８回繰り返す（各頂点をチェック）
 		}
-		
+
 	}//end for i=8
-	//printf("(%.6f,%.6f,%.6f)\n",farblock[0],farblock[1],farblock[2]);
-
-	/*1ボクセルの大きさを測る*/
-	float minX = 100.0f ,maxX = -100.0f;
-	float minY = 100.0f ,maxY = -100.0f;
-	//ここでアクセス違反なんでーーー？？
+	//選ばれし１番遠いボクセル投影ピクセルを計算する
+	/*1ボクセルの大きさを測る これは画面上の大きさだ*/
+	double minX = DBL_MAX ,maxX = -DBL_MAX;
+	double minY = DBL_MAX ,maxY = -DBL_MAX;
 	//blsignは（0,0,0）-(-1,-1,-1)を範囲とする立方体　１回だけ足す
-	farblock[0] += blsign[3*farId+0]*Block::brX*Block::iniX/(this->bnumx*BLX);
-	farblock[1] += blsign[3*farId+1]*Block::brY*Block::iniY/(this->bnumy*BLY);
-	farblock[2] += blsign[3*farId+2]*Block::brZ*Block::iniZ/(this->bnumz*BLZ);
-	//printf("ini[%.1f][%.1f][%.1f]",Block::iniX,Block::iniY,Block::iniZ);
-//printf("(%.6f,%.6f,%.6f)\n",farblock[0],farblock[1],farblock[2]);
-	for(int i = 0;i  < 8;i++)//こんどは１ボクセルループ？？
-	{
-		float x = farblock[0] + vertices[3*i + 0]*Block::brX*Block::iniX/(this->bnumx*BLX);
-		float y = farblock[1] + vertices[3*i + 1]*Block::brY*Block::iniY/(this->bnumy*BLY);
-		float z = farblock[2] + vertices[3*i + 2]*Block::brZ*Block::iniZ/(this->bnumz*BLZ);
-//printf("(%.6f,%.6f,%.6f)\n",x,y,z);
-		blockAPosition[0] = x;
-		blockAPosition[1] = y;
-		blockAPosition[2] = z;
-		blockAPosition[3] = 1.0;
-		
-		
-//視点から最も離れているボクセルを透視投影する。
-		mMtx(modelmatrix, blockAPosition, blockPosition);//ビュー座標になった。
-		mMtx(projmatrix,  blockPosition, blockPosition);//プロジェクション座標になった
-		blockPosition[0] /= blockPosition[3];
-		blockPosition[1] /= blockPosition[3];
-//X座標が -1.0f から1.0f,Y座標が-1.0f から　1.0f ,Z軸が0.0f から 1.0f の間のオブジェクトが表示される
-		
-
-		if(minX > blockPosition[0])
-			minX = blockPosition[0];
-
-		if(minY > blockPosition[1])
-			minY = blockPosition[1];
-
-		if(maxX <= blockPosition[0])
-			maxX = blockPosition[0];
-
-		if(maxY <= blockPosition[1])
-			maxY = blockPosition[1];
+	//たぶん、内側になるように工夫してるんだね
+	farblock.x += blsign[3*farId+0]/(bnumx*BLX);
+	farblock.y += blsign[3*farId+1]/(bnumy*BLY);
+	farblock.w += blsign[3*farId+2]/(bnumz*BLZ);
+	cube<double> farthest_voxel;
+	farthest_voxel.setFromCorner(farblock.toVec3(),1.0/(bnumx*BLX));
 	
-	}
+	vec4<double> clip_block_pos;//クリップ座標でのブロックの位置　クリップ座標は視錐台の形をしている。
+	vec4<double> normalized_device_block_pos;//正規化デバイス座標　
+	for(int i = 0;i  < 8;i++)//
+	{
+		local_block_pos.x= farblock.x + CUBE_VERTICES[3*i + 0]/(bnumx*BLX);
+		local_block_pos.y = farblock.y + CUBE_VERTICES[3*i + 1]/(bnumy*BLY);
+		local_block_pos.z = farblock.z + CUBE_VERTICES[3*i + 2]/(bnumz*BLZ);
+		local_block_pos.w = 1.0;
+		
+		//視点から最も離れているボクセルを透視投影する。
+		view_block_pos=_modelmatrix*local_block_pos;
+		clip_block_pos=_projmatrix*view_block_pos;
+		//wで割ったら正規化デバイス座標になる
+		normalized_device_block_pos.x =clip_block_pos.x/ clip_block_pos.w;
+		normalized_device_block_pos.y =clip_block_pos.y/ clip_block_pos.w;
+		//X座標が -1.0f から1.0f,Y座標が-1.0f から　1.0f ,Z軸が0.0f から 1.0f の間のオブジェクトが表示される
 
+
+		if(minX > normalized_device_block_pos.x)
+			minX = normalized_device_block_pos.x;
+
+		if(minY > normalized_device_block_pos.y)
+			minY = normalized_device_block_pos.y;
+
+		if(maxX <= normalized_device_block_pos.x)
+			maxX = normalized_device_block_pos.x;
+
+		if(maxY <= normalized_device_block_pos.y)
+			maxY = normalized_device_block_pos.y;
+
+	}
 
 	float disX = maxX - minX;//1ボクセルの大きさ（横）
 	float disY = maxY - minY;//1ボクセルの大きさ（縦）
+	vec2<double> pixel_size=farthest_voxel.projectedsize(_modelmatrix,_projmatrix,_winsize);
 	
-	float rcn;
-	if(RESOCONTROL)//1.0f
-	{rcn = 1.0f / RESOCONTROL;}//rcnはずっと1.0f}
-	else{rcn = 0.0f;}
-//2.0*rcn/winwidth=１ピクセルの大きさ
-	
+	//2.0*rcn/winwidth=１ピクセルの大きさ
+	bool is_need_more_resolution = true;
 	//	printf("disX=%.6f,pX=%.6f\n",disX,2.0*rcn/winwidth );
-	if(this->level == 0 || disX < 2.0*rcn/winwidth || disY < 2.0*rcn/winheight){//最も高解像度 or スクリーン上のボクセルの大きさが1ピクセルよりも小さい場合。
-		//printf("%.6f,",2.0*rcn/winwidth);
-		
-		
-		
-		checkflag = false;//ボクセルの大きさは、ピクセルの大きさよりも小さいため、これ以上高解像度にする必要はない。
-	
-		return checkflag;
+	if(this->level == _levelLimit || disX < 2.0/_winsize.x || disY < 2.0/_winsize.y){//最も高解像度 or スクリーン上のボクセルの大きさが1ピクセルよりも小さい場合。
+		is_need_more_resolution = false;//ボクセルの大きさは、ピクセルの大きさよりも小さいため、これ以上高解像度にする必要はない。
+		return is_need_more_resolution;
 	}	//これがtrueならProcessNextResoLoad関数が呼び出される。
-
+	else {return true;}
+	return is_need_more_resolution;
 }
 
 
@@ -578,9 +559,9 @@ void Block::setBlockState(blockState state,unsigned int** renderblock )
 
 
 
-vec3<float> Block::getBlockVec(const mat4<float>& _modelViewMatrix)
+vec3<double> Block::getBlockVec(const mat4<double>& _modelViewMatrix)
 {
-	vec4<float> blockpos;
+	vec4<double> blockpos;
 	
 	float offx,offy,offz;
 	if(this->bnumx == 1)
@@ -605,7 +586,7 @@ vec3<float> Block::getBlockVec(const mat4<float>& _modelViewMatrix)
 
 	blockpos = _modelViewMatrix*blockpos;
 
-	vec3<float> blockvec;
+	vec3<double> blockvec;
 
 	blockvec = - blockpos.toVec3();
 	
@@ -636,7 +617,26 @@ Block::blockState Block::getLowState(Block lowblock){
 
 	return bstate;
 }
-
+bool Block::isSameBlock(Block testBlock){
+	if(this->level!=testBlock.level){return false;}
+	else if(this->x!=testBlock.x){return false;}
+	else if(this->y!=testBlock.y){return false;}
+	else if(this->z!=testBlock.z){return false;}
+	else{return true;}
+}
+/*!
+@brief frustum<T>の汎用性を保持したかったのでBlockのほうに判定を作った。
+*/
+int Block::IsInFrustum(const frustum<double>& _frustum){
+	//もしビューボリュームにblockが入っていれば
+        vec3<double> corner;//cornerの成分は0か-1だ。
+        corner.x = (2.0f*x-bnumx)*Block::brX*Block::iniX/bnumx;
+        corner.y = (2.0f*y-bnumy)*Block::brY*Block::iniY/bnumy;
+        corner.z = (2.0f*z-bnumz)*Block::brZ*Block::iniZ/bnumz;
+ 
+        aabox<double> abox(corner,2.0f*Block::brX*Block::iniX/bnumx,2.0f*Block::brY*Block::iniY/bnumy,2.0f*Block::brZ*Block::iniZ/bnumz);//ブロックの情報をAxis Aligned Boxで表現している。AABoxのx,y,zはブロックの辺の長さ。
+        return _frustum.boxInFrustum(abox);
+}
 void Block::renderNumber(int _num,float r,float g,float b){
 	void* fontType= GLUT_BITMAP_HELVETICA_18;
 	char vertNumber[10]={'0','1','2','3','4','5','6','7','8','9'};
