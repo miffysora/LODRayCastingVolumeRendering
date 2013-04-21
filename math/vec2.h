@@ -3,11 +3,9 @@
 #define MIFFY_VEC2
 #define _USE_MATH_DEFINES
 #include <stdio.h>
-#include <GL/glew.h>
-#include <GL/freeglut.h>
 #include <cmath>
 namespace miffy{
-  template <typename T>
+	template <typename T>
 	struct vec2{
 		T x;
 		T y;
@@ -28,6 +26,15 @@ namespace miffy{
 		}
 		vec2 operator+(const vec2<T>& _in){
 			return vec2(x+_in.x,y+_in.y);
+		}
+		bool operator<(const vec2<T>& _in){
+			if(x<_in.x && y<_in.y){return true;}
+			return false;
+		}
+		
+		bool operator>(const vec2<T>& _in){
+			if(x>_in.x && y>_in.y){return true;}
+			return false;
 		}
 		float length(){return sqrt((float)(x*x+y*y));}
 		float pow(){return ((float)(x*x+y*y));}
