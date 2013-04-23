@@ -19,23 +19,36 @@ vec3<float> blsign[8]={
 	vec3<float>(-1.0f,-1.0f,-1.0f),
 	vec3<float>(0,-1.0f,-1.0f),
 };
- unsigned int Block::LEVEL_NUM=0;//実態
+unsigned int Block::LEVEL_NUM=0;//実態
+Block Block::ROOT_BLOCK;
+unsigned int  Block::ORIGINAL_VOXEL_NUM;//2のべき乗である必要がある。
+unsigned int  Block::BOXEL_PER_BLOCK;
+
 /*!
 @brief デフォルトコンストラクタはルートのブロック
 */
 Block::Block()
-	:m_x(0),m_y(0),m_z(0),level(Block::LEVEL_NUM),m_block_num(1),m_size(1.0){
+	:m_x(0),m_y(0),m_z(0),m_level(Block::LEVEL_NUM),m_block_num(1),m_size(1.0){
 		m_cube.setFromCorner(vec3<float>(-0.5f,-0.5f,-0.5f),1.0f);
 }
-Block::Block(const int _x,const int _y,const int _z,const int _level,const int _blockNum,const  float _blockLength)
-	:m_x(_x),m_y(_y),m_z(_z),level(_level),m_block_num(_blockNum),m_size(_blockLength)
+Block::Block( int _x, int _y, int _z, int _level, int _blockNum,  float _blockLength)
+	:m_x(_x),m_y(_y),m_z(_z),m_level(_level),m_block_num(_blockNum),m_size(_blockLength)
 {
-	m_cube.setFromCorner(vec3<float>(0,0,0),1.0);
+	m_cube.setFromCorner(vec3<float>((float)m_x*m_size,(float)m_y*m_size,(float)m_z*m_size),m_size);
 }
-const Block Block::getChildren(int _x,int _y,int _z){
-	return Block(_x,_y,_z,m_level++,m_block_num*2,m_size*0.5f);
+const Block Block::getChildren(int _x,int _y,int _z)const{
+	//printf("get children%d\n",m_level);
+	return Block(_x,_y,_z,m_level-1,m_block_num*2,m_size*0.5f);
 }
-//Block& Block::operator=(const Block& _in){}
+//Block& Block::operator=(const Block& _in){//デバッグのためい必要
+//	m_x=_in.m_x;
+//	m_y=_in.m_y;
+//	m_z=_in.m_z;
+//	m_cube=_in.m_cube;
+//	m_level=_in.m_level;
+//	m_block_num=_in.m_block_num;
+//	return Block(_
+//}
  void Block::Init(int _original_voxel_num,int _voxel_per_block,float _root_length){
 	Block::LEVEL_NUM=0;
 	Block::ORIGINAL_VOXEL_NUM=_original_voxel_num;
@@ -47,10 +60,19 @@ const Block Block::getChildren(int _x,int _y,int _z){
 	}
 	ROOT_BLOCK.set(0,0,0,Block::LEVEL_NUM,1,_root_length);
 }
- void set(const int _x,const int _y,const int _z,const int _level,const int _blockNum,const  float _blockLength){
+ void Block::set(const int _x,const int _y,const int _z,const int _level,const int _blockNum,const  float _blockLength){
+	 m_x=_x;
+	 m_y=_y;
+	 m_z=_z;
+	 m_level=_level;
+	 m_block_num=_blockNum;
+	 m_size=_blockLength;
+
  }
-void Block::setMySerialNumber(int id){
-	this->mySerialNumber=id;
+void Block::info(const char* _message)const{
+	if(m_level<0){assert(!"illegal");}
+	printf("%s:",_message);
+	printf("Level[%d](%d,%d,%d)\n",m_level,m_x,m_y,m_z);
 }
 /*!
 @brief frustum<T>の汎用性を保持したかったのでBlockのほうに判定を作った。
@@ -69,7 +91,7 @@ void Block::renderBlockLines(){
 }
 
 void Block::renderBlockQUADS(float times){
-	glColor4f(this->x*times,this->y*times,this->z*times,0.5);
+	glColor4f(m_x*times,m_y*times,m_z*times,0.5);
 	m_cube.DrawQuads();
 }
 /*!
