@@ -4,6 +4,7 @@
 #pragma once
 #include <stdio.h>
 #include <math.h> 
+#include <assert.h>
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 #include <sstream>
@@ -36,16 +37,10 @@ public:
 	//ブロックが視錐台に入ってるかどうか判定するときに使う
 	int m_block_num;
 	enum blockstate{CHILDREN,PARENT,SAME};
-	int parentSerialNumber;
-
 	float distanceFromCamera;
-	int mySerialNumber;
-	short int level;//hierarchical blockingの時必要になる。
-	//float centerX,centerY,centerZ;
-	bool showblockflag;//そのブロックに表示すべきデータが入ってればtrue,なにもデータがなければfalse
 	Block();
-	Block(const int _x,const int _y,const int _z,const int _level,const int _blockNum,const  float _blockLength);
-	const Block getChildren(int _x,int _y,int _z);
+	Block( int _x, int _y, int _z, int _level, int _blockNum,  float _blockLength);
+	const Block getChildren(int _x,int _y,int _z)const;
 	//Block& operator=(const Block& _in);
 	//destructor
 	~Block(void);
@@ -57,6 +52,7 @@ public:
 	//レンダリング
 	void renderBlockQUADS(float times=0.5f);
 	void renderBlockLines();
+	void info(const char* _message)const;
 	int IsInFrustum(const frustum<float>& _frustum);
 	bool IsBestResolution(const mat4<float>& _modelMatrix,const mat4<float>& _projmatrix,const vec2<int>& _winsize)const;
 
