@@ -29,7 +29,7 @@ unsigned int  Block::BOXEL_PER_BLOCK;
 */
 Block::Block()
 	:m_x(0),m_y(0),m_z(0),m_level(Block::LEVEL_NUM),m_block_num(1),m_size(1.0){
-		m_cube.setFromCorner(vec3<float>(-0.5f,-0.5f,-0.5f),1.0f);
+		m_cube.setFromCorner(vec3<float>(0.0f,0.0f,0.0f),1.0f);
 }
 Block::Block( int _x, int _y, int _z, int _level, int _blockNum,  float _blockLength)
 	:m_x(_x),m_y(_y),m_z(_z),m_level(_level),m_block_num(_blockNum),m_size(_blockLength)
@@ -99,6 +99,7 @@ void Block::renderBlockQUADS(float times){
 */bool Block::IsBestResolution(const mat4<float>& _modelMatrix,const mat4<float>& _projmatrix,const vec2<int>& _winsize)const
 {//最適レベルの値を返す
 	if( m_level==0){//オリジナル解像度なので無理。
+		assert(!"そんなわけない");
 		return false;
 	}
 	//まずは一番遠い頂点インデックスを求める
@@ -116,11 +117,16 @@ void Block::renderBlockQUADS(float times){
 	//int=0 粗くする 1=stay same 2=詳細にする
 
 	cube<float> fartherest_voxel;
+	float one_voxel_size=m_size/(float)BOXEL_PER_BLOCK*0.5f;//*0.5fにしたのは、仮にもう一段階したとき、１ピクセルより小さくなるかどうかってやり方にしたいから
 	fartherest_voxel.setFromCorner(
-		vec3<float>(m_size/BOXEL_PER_BLOCK,m_size/BOXEL_PER_BLOCK,m_size/BOXEL_PER_BLOCK),
-		(float)m_size/(float)BOXEL_PER_BLOCK*0.5f);//*0.5fにしたのは、仮にもう一段階したとき、１ピクセルより小さくなるかどうかってやり方にしたいから
+		vec3<float>((float)m_x*one_voxel_size,(float)m_y*one_voxel_size,(float)m_z*one_voxel_size),
+		one_voxel_size);
 	vec2<float> projected_size=fartherest_voxel.projectedsize(_modelMatrix,_projmatrix,_winsize);
-	if(projected_size.x<1.0f || projected_size.y<1.0f){return false;}//これ以上詳細にしなくてもいい					
+	projected_size.Print("投影サイズ");
+	if(projected_size.x<1.0f || projected_size.y<1.0f){
+		info("合格ブロック");
+		return false;}//これ以上詳細にしなくてもいい					
+	info("より詳細にする必要あり");
 	return true;
 
 		
