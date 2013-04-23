@@ -4,7 +4,7 @@
 #include <cmath>
 
 namespace miffy{
-  
+	
 	template <typename T>
 	struct vec4{//計算用の頂点構造体
 		T x;
@@ -69,6 +69,7 @@ namespace miffy{
 #endif
 #ifdef MIFFY_VEC3
 		vec4(vec3<T> _in,T _w):x(_in.x),y(_in.y),z(_in.z),w(_w){}
+		vec4(vec3<T> _in):x(_in.x),y(_in.y),z(_in.z),w((T)1.0){}
 		void set(vec3<T> _in){x=_in.x;y=_in.y;z=_in.z;w=(T)1.0;}
 		vec3<T> toVec3(){return vec3<T>(x,y,z);}
 #endif
