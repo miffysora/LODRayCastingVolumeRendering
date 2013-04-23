@@ -1,6 +1,5 @@
 #include "Lod.h"
 
-
 Lod::Lod(void)
 	:m_world_eye_pos(vec3<double>(0.0, 0.0, 9.0))
 	,m_near(0.1f)
@@ -9,7 +8,6 @@ Lod::Lod(void)
 	,m_zoom(0.0f)
 {
 	Block::Init(1024,64,1.0);
-	m_block_list.push_back(Block());
 	
 }
 void Lod::display(){
@@ -42,11 +40,14 @@ void Lod::OctreeTraversal(const Block& _parent_block, list<Block>* _dst){
 		for(int z=0;z<2;z++){
 			for(int y=0;y<2;y++){
 				for(int x=0;x<2;x++){
+					//_parent_block.info("root");
+					//Block child=_parent_block.getChildren(x,y,z);
 					OctreeTraversal(_parent_block.getChildren(x,y,z),_dst);
 				}
 			}
 		}
 	}else{
+		//_parent_block.info("push");
 		_dst->push_back(_parent_block);
 	}
 	
@@ -89,7 +90,7 @@ void Lod::reshape(int _width, int _height){
 	glLoadIdentity(); 
 	gluPerspective(m_fovy, m_aspect_ratio, m_near, m_far);//original
 	glGetFloatv(GL_PROJECTION_MATRIX, m_proj_matrix.m);	
-	m_render_frsutum.setFromPerspective(m_proj_matrix.m,m_fovy,m_aspect_ratio,m_near,m_far);	
+	m_render_frsutum.setFromPerspective(m_proj_matrix,m_fovy,m_aspect_ratio,m_near,m_far);	
 	glMatrixMode(GL_MODELVIEW);
 
 
