@@ -4,7 +4,7 @@
 #include <iostream>
 using namespace std;
 namespace miffy{
-  template <typename T>
+	template <typename T>
 	class vec3{//計算用の頂点構造体
 
 	public:
@@ -23,7 +23,7 @@ namespace miffy{
 		vec3<T> operator-(const vec3<T>& _in){
 			return vec3<T>(x-_in.x,y-_in.y,z-_in.z);
 		}
-		vec3<T> operator+(const vec3<T>& _in){
+		vec3<T> operator+(const vec3<T>& _in)const{
 			return vec3<T>(x+_in.x,y+_in.y,z+_in.z);
 		}
 		vec3<T> operator*(const vec3<T>& _in){
@@ -107,7 +107,7 @@ namespace miffy{
 
 		void set(T _x,T _y,T _z){x=_x;y=_y;z=_z;}
 
-		T innerProduct(const vec3<T>& _in){//内積
+		T innerProduct(const vec3<T>& _in)const{//内積
 			return (x*_in.x+y*_in.y+z*_in.z);
 		}
 
@@ -176,7 +176,7 @@ namespace miffy{
 	template<> void vec3<float>::glTranslate(){glTranslatef(x,y,z);}
 	template<> void vec3<double>::glTranslate(){glTranslated(x,y,z);}
 	template<> void vec3<float>::glRasterPos(){glRasterPos3f(x,y,z);}
-	template<> void vec3<double>::glRasterPos(){glRasterPos3f(x,y,z);}
+	template<> void vec3<double>::glRasterPos(){glRasterPos3d(x,y,z);}
 #endif
 
 }//namespace
