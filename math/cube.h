@@ -94,7 +94,6 @@ namespace miffy{
       for(int i = 0;i  < 8;i++)//
       {
         local_pos.set(corner[i]);
-		local_pos.print("ローカル座標");
 		//_modelmatrix.print("モデルビュー");
 		 view_pos=_modelmatrix*local_pos;
 		// view_pos.print("視点座標");
@@ -106,20 +105,43 @@ namespace miffy{
 		}
         normalized_device_pos.x =clip_pos.x/ clip_pos.w;
         normalized_device_pos.y =clip_pos.y/ clip_pos.w;
-        if(normalized_device_pos<minPixel){
-          minPixel=normalized_device_pos;
+        if(normalized_device_pos.x<minPixel.x){
+          minPixel.x=normalized_device_pos.x;
         }
-        if(normalized_device_pos>maxPixel){
-          maxPixel=normalized_device_pos;
+        if(normalized_device_pos.x>maxPixel.x){
+          maxPixel.x=normalized_device_pos.x;
+        }
+		//めんどくさいようだけど、xとyは別々にやらなきゃならない。
+		if(normalized_device_pos.y<minPixel.y){
+          minPixel.y=normalized_device_pos.y;
+        }
+        if(normalized_device_pos.y>maxPixel.y){
+          maxPixel.y=normalized_device_pos.y;
         }
       
       }
-	  maxPixel.Print("maxpixel");
-	  minPixel.Print("minpixel");
-      return vec2<T>(vec2<T>(maxPixel-minPixel)*_winsize);//引き算する＝距離・サイズ
+	 return vec2<T>(vec2<T>(maxPixel-minPixel)*_winsize);//引き算する＝距離・サイズ
 		
     }
+	
 #endif
+	/*!
+	@brief 視点からもっとも遠い頂点を返す*/
+	int FarthestIndex(const mat4<float>& _modelMatrix)const{
+		//まずは一番遠い頂点インデックスを求める
+		vec3<float> viewvec(-_modelMatrix.m[2],-_modelMatrix.m[6],-_modelMatrix.m[10]);
+		float maxdist = viewvec.innerProduct(corner[0]);//内積を求める
+		float mindist = maxdist;
+		int far_id = 0;//nMaxIdxは、m_pEdgeListのためのインデックス
+		for(int i = 1; i < 8; ++i) {
+			float dist = viewvec.innerProduct(corner[i]);//各頂点との内積を求める
+			if ( dist > maxdist) {
+				maxdist = dist;
+				far_id = i;//マウスで箱を動かすとここの値が変わる。初期値では0
+			}
+		}//一番遠い頂点調べるの終わり
+		return far_id;
+	}
 #ifdef  __FREEGLUT_H__
     void DrawWireCube(){
       
@@ -137,6 +159,16 @@ namespace miffy{
       glEnd();
       
     }
+	/*!
+	@brief 立方体の頂点の番号の文字を表示する
+	*/
+	void DrawVertexIdBitmap(){
+		for(int i=0;i<8;i++){
+			corner[i].glRasterPos();
+			glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, i+48);
+		
+		}
+	}
     //手前の線は描かない！　挫折中
     void DrawOnlyBackWire(float _camX,float _camY,float _camZ){//
       vec3<float> viewVec(_camX,_camY,_camZ);
