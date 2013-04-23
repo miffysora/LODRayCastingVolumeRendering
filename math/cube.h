@@ -83,15 +83,15 @@ namespace miffy{
 		}
 #ifdef MIFFY_VEC2
 		vec2<T> projectedsize(const mat4<T>& _modelmatrix,const mat4<T>& _projmatrix,const vec2<int>& _winsize){
-			double dis_from_camera;//カメラから頂点への距離
-			double max_distance = -DBL_MAX;//カメラから頂点への距離の最大値
+			T dis_from_camera;//カメラから頂点への距離
+			T max_distance = numeric_limits<T>::min;//カメラから頂点への距離の最大値
 			
 			vec4<T> local_pos;//オブジェクトの中心が原点な座標系
 			vec4<T> view_pos;//視点が原点な座標系
 			vec4<T> clip_pos;//クリップ座標での位置
 			vec2<T> normalized_device_pos;
 			//キューブの中で投影された中でも一番右上と左下を求めて最大の大きさを知る
-			vec2<T> minPixel(DBL_MAX,DBL_MAX),maxPixel(-DBL_MAX,-DBL_MAX);
+			vec2<T> minPixel(numeric_limits<T>::max,numeric_limits<T>::max),maxPixel(numeric_limits<T>::min,numeric_limits<T>::min);
 			for(int i = 0;i  < 8;i++)//
 			{
 				local_pos.set(corner[i]);
