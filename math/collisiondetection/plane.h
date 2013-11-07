@@ -20,12 +20,12 @@ namespace miffy{
 		plane( vec3<T> &_v1,  vec3<T> &_v2,  vec3<T> &_v3){set3Points(_v1,_v2,_v3);}
 		plane(void){}
 		~plane(){}
-
+		//平面は３つの点で定義できる
 		void set3Points( vec3<T> &_v1,  vec3<T> &_v2,  vec3<T> &_v3){
 			pointA=_v1;
 			pointB=_v2;
 			pointC=_v3;
-			vec3<T> aux1, aux2;
+			vec3<T> aux1, aux2;//計算のための一時的な変数
 
 			aux1 = _v1 - _v2;
 			aux2 = _v3 - _v2;
@@ -33,9 +33,9 @@ namespace miffy{
 			pointD=_v3+aux1;
 	
 
-			normal =aux2.cross(aux1);// aux2 * aux1;
+			normal =aux2.cross(aux1);//平面の法線ベクトル
 
-			normal.normalize();//これが違う。
+			normal.normalize();//正規化
 			point=_v2;
 			distance = -(normal.innerProduct(point));
 		}
