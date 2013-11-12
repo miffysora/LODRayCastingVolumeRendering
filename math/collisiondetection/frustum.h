@@ -139,32 +139,34 @@ class frustum{
 	//世界座標系の視錐台を作る
 	void setCamDef(vec3<T> &_p, vec3<T> &_l, vec3<T> &_u){//gluLookAtと同じ（p=カメラ、l=注視点、u=アッパーベクタ）//display関数の中で呼び出される
 
-		vec3<T>  dir,nc,fc,X,Y,Z;
-		//ニアークリッピング面にひっついたX,Y,Zというベクトルを作る
+		vec3<T>  dir,nc,fc,rightVec,upVec,viewVec;
+		//ビューベクトルに等しいZから
+		//ニアークリッピング面にひっついたupVec,rightVecというベクトルを作る
 		//Z = p - l;
-		Z = _l;//注視点
-		Z.normalize();
+		viewVec = _l;//注視点
+		viewVec.normalize();
 
-		X =Z.cross(_u);// Z * u;//u=upper vector
-		X.normalize();
+		rightVec =viewVec.cross(_u);// Z * u;//u=upper vector
+		rightVec.normalize();
 
-		Y = -Z.cross(X);//(Z * X);
-
+		upVec = -viewVec.cross(X);//(Z * X);
+		//near center
 		//nc = p - Z * nearD;
-		nc = _p + Z * nearD;
+		nc = _p + viewVec * nearD;
+		//far center
 		//fc = p - Z * farD;
-		fc = _p + Z * farD;
+		fc = _p + viewVec * farD;
 
 		//n for near
-		ntl = nc + Y * nh - X * nw;//near top left
-		ntr = nc + Y * nh + X * nw;//near top right
-		nbl = nc - Y * nh - X * nw;//near bottom left
-		nbr = nc - Y * nh + X * nw;//near bottom right
+		ntl = nc + upVec * nh - rightVec * nw;//near top left
+		ntr = nc + upVec * nh + rightVec * nw;//near top right
+		nbl = nc - upVec * nh - rightVec * nw;//near bottom left
+		nbr = nc - upVec * nh + rightVec * nw;//near bottom right
 		//f for far
-		ftl = fc + Y * fh - X * fw;//far top left
-		ftr = fc + Y * fh + X * fw;//far top right
-		fbl = fc - Y * fh - X * fw;//far bottom left
-		fbr = fc - Y * fh + X * fw;//far bottom right
+		ftl = fc + upVec * fh - rightVec * fw;//far top left
+		ftr = fc + upVec * fh + rightVec * fw;//far top right
+		fbl = fc - upVec * fh - rightVec * fw;//far bottom left
+		fbr = fc - upVec * fh + rightVec * fw;//far bottom right
 		//pl for plane(視錐台を構成する６つの平面)
 		plane[TOP].set3Points(ntr,ntl,ftl);
 		plane[BOTTOM].set3Points(nbl,nbr,fbr);
