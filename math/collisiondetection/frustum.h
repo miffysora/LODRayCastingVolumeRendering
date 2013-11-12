@@ -136,11 +136,11 @@ class frustum{
 			radious2 = 2.0f*NDNearPos[0]/3.0f;
 		}
 }
-
+	//世界座標系の視錐台を作る
 	void setCamDef(vec3<T> &_p, vec3<T> &_l, vec3<T> &_u){//gluLookAtと同じ（p=カメラ、l=注視点、u=アッパーベクタ）//display関数の中で呼び出される
 
 		vec3<T>  dir,nc,fc,X,Y,Z;
-
+		//ニアークリッピング面にひっついたX,Y,Zというベクトルを作る
 		//Z = p - l;
 		Z = _l;//注視点
 		Z.normalize();
@@ -201,7 +201,7 @@ class frustum{
 		return(result);
 
 	}
-	//この判定大丈夫？
+	//世界座標系で使用する
 	int boxInFrustum(aabox<T> &_b) {
 		int result = INSIDE;
 		for(int i=0; i < 6; i++) {
